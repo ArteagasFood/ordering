@@ -36,4 +36,36 @@ export interface SentMessageDto {
   sentAt: string;
 }
 
+/**
+ * The admin-governed policy for one trigger (TDD §5.2, §14): the org-wide default, an
+ * optional forced override, and a lock. These are the "admin global / override / locked"
+ * inputs to the settings resolver. When `locked` is true, the resolved override value
+ * wins over (and disables) every user's own choice.
+ */
+export interface EmailPolicyDto {
+  trigger: EmailTrigger;
+  /** Whether users receive this notification absent any per-user row. */
+  globalDefault: boolean;
+  /** A forced value; null means "no override". Only takes effect when paired with `locked`. */
+  overrideEnabled: boolean | null;
+  /** When true (with a non-null override), the override wins and user toggles are disabled. */
+  locked: boolean;
+}
+
+/** An admin sets or clears the policy for one trigger (the trigger comes from the path). */
+export const zUpdatePolicyRequest = z.object({
+  globalDefault: z.boolean(),
+  /** null clears the override; a boolean forces that value (effective only when locked). */
+  overrideEnabled: z.boolean().nullable(),
+  locked: z.boolean(),
+});
+export type UpdatePolicyRequest = z.infer<typeof zUpdatePolicyRequest>;
+
+/** An admin sends a sample message to demonstrate the provider/outbox while email is stubbed. */
+export const zTestSendRequest = z.object({
+  trigger: z.enum(EMAIL_TRIGGERS),
+  toEmail: z.string().email().max(254),
+});
+export type TestSendRequest = z.infer<typeof zTestSendRequest>;
+
 export { EMAIL_TRIGGERS };

@@ -87,4 +87,20 @@ export const zApCorrectionRequest = z.object({
 });
 export type ApCorrectionRequest = z.infer<typeof zApCorrectionRequest>;
 
+/**
+ * Query filters for listing orders (GET /orders). All optional and AND-composed:
+ *
+ *  - `serviceDay`  — restrict to one service day (YYYY-MM-DD).
+ *  - `status`      — restrict to one lifecycle state.
+ *  - `role`        — narrow a store user's view to only the orders where their store is
+ *                    the buyer, or only those where it is the producer. Ignored for
+ *                    global roles unless combined with a store-scoped query upstream.
+ */
+export const zListOrdersQuery = z.object({
+  serviceDay: zIsoDate.optional(),
+  status: z.enum(ORDER_STATUSES).optional(),
+  role: z.enum(['buyer', 'producer']).optional(),
+});
+export type ListOrdersQuery = z.infer<typeof zListOrdersQuery>;
+
 export { ORDER_STATUSES };

@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { LogOut, Store } from 'lucide-react';
+import type { StoreDto } from '@panaderia/shared';
 import { useAuth } from '@/lib/auth-store';
+import { api } from '@/lib/api-client';
 import { navRoutesFor } from './routes';
+import { CutoffCountdown } from '@/features/orders';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +28,25 @@ export function Header() {
   if (!user) return null;
 
   const navRoutes = navRoutesFor(user.role);
+
+  // A store user's own store cutoff is surfaced in the header (TDD §17 "Respect the
+  // clock"). The countdown renders only when the store actually has a cutoff (producers).
+  const [ownStore, setOwnStore] = useState<StoreDto | null>(null);
+  useEffect(() => {
+    if (user.role !== 'store_user' || !user.storeId) return;
+    let cancelled = false;
+    api
+      .get<StoreDto[]>('/stores')
+      .then((stores) => {
+        if (!cancelled) setOwnStore(stores.find((s) => s.id === user.storeId) ?? stores[0] ?? null);
+      })
+      .catch(() => {
+        /* non-fatal: the countdown is a convenience, not required */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.role, user.storeId]);
 
   async function handleLogout() {
     await logout();
@@ -55,8 +78,12 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Cutoff countdown slot (TDD §17.2) — populated by the orders slice in Phase 2. */}
-        <div id="cutoff-countdown-slot" className="ml-auto" />
+        {/* Cutoff countdown slot (TDD §17.2). */}
+        <div className="ml-auto">
+          {ownStore?.cutoffTime && (
+            <CutoffCountdown cutoffTime={ownStore.cutoffTime} label={`Cutoff · ${ownStore.name}`} />
+          )}
+        </div>
 
         <div className="flex items-center gap-3 text-right">
           <div className="leading-tight">

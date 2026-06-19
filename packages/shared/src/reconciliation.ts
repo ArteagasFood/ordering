@@ -52,3 +52,13 @@ export const zResolveFlagRequest = z.object({
   resolved: z.boolean().default(true),
 });
 export type ResolveFlagRequest = z.infer<typeof zResolveFlagRequest>;
+
+/**
+ * Query filter for the flags list (TDD §10.2 step 4). `resolved` is optional; omitting
+ * it returns both open and closed exceptions. The value arrives as a query-string token
+ * (`'true'`/`'false'`), so it is coerced from the string form before validation.
+ */
+export const zListFlagsQuery = z.object({
+  resolved: z.enum(['true', 'false']).optional(),
+});
+export type ListFlagsQuery = z.infer<typeof zListFlagsQuery>;

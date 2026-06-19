@@ -75,3 +75,20 @@ export const zSetPriceOverrideRequest = z.object({
   reason: z.string().min(1).max(500),
 });
 export type SetPriceOverrideRequest = z.infer<typeof zSetPriceOverrideRequest>;
+
+/** Query for a store's full menu: `GET /menu?storeId=<id>` (TDD §6.3, §7). */
+export const zMenuListQuery = z.object({
+  storeId: z.string().uuid(),
+});
+export type MenuListQuery = z.infer<typeof zMenuListQuery>;
+
+/**
+ * Query for the buyer-facing orderable menu: `GET /menu/orderable?producerStoreId=<id>`.
+ * Returns only items where `orderable === true` with their effective prices, so the
+ * orders slice can render exactly what a buyer may order and snapshot the same price
+ * the menu shows (TDD §7.2).
+ */
+export const zOrderableMenuQuery = z.object({
+  producerStoreId: z.string().uuid(),
+});
+export type OrderableMenuQuery = z.infer<typeof zOrderableMenuQuery>;

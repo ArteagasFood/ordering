@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { zCents, zMonth } from './common';
 import { SETTLEMENT_VIEWS } from './enums';
-import type { Cents, Id, Month } from './common';
+import type { Cents, Id, IsoDate, Month } from './common';
 import type { SettlementView } from './enums';
 
 /**
@@ -45,6 +45,63 @@ export interface SettlementReportDto {
   closed: boolean;
   pairs: NettedPairDto[];
   directional: StatementDto[];
+}
+
+/**
+ * One AP correction (from the audit log) that touched a constituent line of a
+ * statement (TDD §12.2). Carries the actor, timestamp, before/after, and reason so the
+ * drill-down is a complete audit trail — the netted figure is never a black box.
+ */
+export interface LineCorrectionDto {
+  actorId: Id;
+  /** ISO timestamp the correction was written. */
+  at: string;
+  before: unknown;
+  after: unknown;
+  reason: string;
+}
+
+/**
+ * A single constituent order line of a directional statement, for the drill-down audit
+ * trail (TDD §12.2): the item, the service day, the billable received count, the price
+ * snapshot, the computed line total, and any AP corrections that targeted this line.
+ */
+export interface StatementLineDto {
+  orderLineId: Id;
+  orderId: Id;
+  catalogItemName: string;
+  serviceDay: IsoDate;
+  orderedQty: number;
+  /** Buyer's confirmed received count (the billable quantity); null until received. */
+  receivedQty: number | null;
+  unitPriceSnapshotCents: Cents;
+  lineTotalCents: Cents;
+  corrections: LineCorrectionDto[];
+}
+
+/** Drill-down response: the directional statement plus its constituent lines (TDD §12.2). */
+export interface StatementLinesDto {
+  statement: StatementDto;
+  lines: StatementLineDto[];
+  /** Σ of the lines' lineTotalCents — must equal the statement's gross for the month. */
+  totalCents: Cents;
+}
+
+/** A recorded offline check payment against a statement (TDD §12.3 step 3). */
+export interface PaymentDto {
+  id: Id;
+  statementId: Id;
+  amountCents: Cents;
+  reference: string;
+  recordedBy: Id;
+  recordedAt: string;
+}
+
+/** Result of closing a month: how many directional statements were frozen. */
+export interface CloseMonthResultDto {
+  month: Month;
+  closedAt: string;
+  statementsClosed: number;
 }
 
 export const zSettlementQuery = z.object({

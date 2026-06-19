@@ -1,5 +1,16 @@
 import { Router } from 'express';
 import { authRouter } from './modules/auth/auth.routes';
+import { storesRouter } from './modules/admin/stores.routes';
+import { usersRouter } from './modules/admin/users.routes';
+import { flagsRouter } from './modules/admin/flags.routes';
+import { productTypesRouter, catalogRouter, taxonomyRouter } from './modules/catalog/catalog.routes';
+import { menuRouter, pricesRouter } from './modules/menu/menu.routes';
+import { ordersRouter } from './modules/orders/orders.routes';
+import { bakeListRouter } from './modules/bakelist/bakelist.routes';
+import { reconciliationRouter } from './modules/reconciliation/reconciliation.routes';
+import { settlementRouter } from './modules/invoicing/invoicing.routes';
+import { reportsRouter } from './modules/reporting/reporting.routes';
+import { notificationsRouter } from './modules/notifications/notifications.routes';
 
 /**
  * The central API router registry — the ONE place slice routers are wired in.
@@ -16,8 +27,29 @@ export interface RouteModule {
 
 const modules: RouteModule[] = [
   { path: '/auth', router: authRouter },
-  // Phase 1 slices are registered here during Phase 2 integration, e.g.:
-  // { path: '/stores', router: storesRouter },
+  // Admin slice
+  { path: '/stores', router: storesRouter },
+  { path: '/users', router: usersRouter },
+  { path: '/flags', router: flagsRouter },
+  // Catalog & taxonomy slice
+  { path: '/product-types', router: productTypesRouter },
+  { path: '/catalog', router: catalogRouter },
+  { path: '/taxonomy', router: taxonomyRouter },
+  // Menu & pricing slice
+  { path: '/menu', router: menuRouter },
+  { path: '/prices', router: pricesRouter },
+  // Orders lifecycle slice
+  { path: '/orders', router: ordersRouter },
+  // Bake list & distribution slice
+  { path: '/bake-list', router: bakeListRouter },
+  // Reconciliation slice
+  { path: '/reconciliation', router: reconciliationRouter },
+  // Invoicing & settlement slice
+  { path: '/settlement', router: settlementRouter },
+  // Reporting slice
+  { path: '/reports', router: reportsRouter },
+  // Notifications slice
+  { path: '/notifications', router: notificationsRouter },
 ];
 
 export function buildApiRouter(): Router {
