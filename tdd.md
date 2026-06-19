@@ -68,7 +68,7 @@ Today the product is Mexican bread and panadería items. The data model treats e
 | Charts | D3 | Full control for the granular reporting module. |
 | Backend | Express (Node.js) | Familiar, stable, long-lived process well suited to Railway. |
 | ORM | Drizzle | Type-safe SQL with first-class Postgres + migrations. |
-| Database | PostgreSQL | Relational integrity plus Row-Level Security as a real boundary. |
+| Database | PostgreSQL | Relational integrity; RLS-ready schema for future row-level enforcement (see §2.3). |
 | Email | Resend | Simple transactional email for reminders, digests, alerts. |
 | Auth | Self-rolled | Argon2id + server-side sessions; admin-managed accounts. |
 
@@ -84,17 +84,19 @@ The frontend is a **pure static Vite bundle** served by Vercel. The backend is a
 
 1. Browser sends credentials to the Express API; on success the API issues an httpOnly, Secure, SameSite session cookie.
 2. Every subsequent request carries that cookie. Express middleware resolves the session to a user and role.
-3. Before issuing queries, the request handler opens a transaction and sets a Postgres session variable identifying the current user and role.
-4. Drizzle runs the query inside that transaction; Postgres Row-Level Security policies use the session variable to permit or deny rows.
+3. Before issuing queries, the request handler passes through a single **authorization module** that resolves the session to the current user, role, and store, and computes the row scope the request is permitted.
+4. Drizzle runs the query with that scope applied (e.g. a mandatory `store_id` filter for Store Users). The authorization module is the one place every data access is gated.
 5. The API shapes the result and returns JSON; the SPA renders, having already hidden any controls the user lacks permission to use.
 
-> **Two layers, two jobs.** UI enforcement is for experience — never show a button that will fail. Postgres RLS is the real security boundary — a bug or a malicious client cannot read or write rows the role isn't entitled to, because the database itself refuses.
+> **Two layers, two jobs.** UI enforcement is for experience — never show a button that will fail. The server-side authorization module is the real security boundary — every data route passes through it, so a bug elsewhere or a malicious client cannot read or write rows the role isn't entitled to.
+
+> **Deferred hardening (MVP decision, June 2026).** v1 enforces authorization in one application-layer module rather than in Postgres Row-Level Security. The schema is kept **RLS-ready** — every store-scoped table carries `store_id` — so RLS policies can be added later as defense-in-depth without a migration. Rationale: for three fixed roles and a trusted internal user base, a single audited authorization module is simpler to build and test for the MVP while remaining a true boundary, and the server-side session already yields the user/role/store needed to scope every query. Server-side sessions and Argon2id (§4) are unchanged.
 
 ---
 
 ## 3. Roles & Permissions
 
-RBAC is intentionally simple in v1: three roles, fixed in code. There is no UI for inventing roles or reassigning permissions — a deliberate choice to avoid over-engineering a bread-ordering app. The structure below still routes all enforcement through Postgres RLS, so a future configurable layer would change where permissions are defined (a table instead of code) without changing how they are enforced.
+RBAC is intentionally simple in v1: three roles, fixed in code. There is no UI for inventing roles or reassigning permissions — a deliberate choice to avoid over-engineering a bread-ordering app. The structure below still routes all enforcement through a single server-side authorization module (see §2.3; Postgres RLS is a planned hardening step), so a future configurable layer would change where permissions are defined (a table instead of code) without changing how they are enforced.
 
 ### 3.1 The Three Roles
 
@@ -109,9 +111,9 @@ RBAC is intentionally simple in v1: three roles, fixed in code. There is no UI f
 Two scoping concepts compose to give every rule:
 
 - **Action scope** — the verb the role may perform (place an order, mark an invoice paid, edit a flag). Branches in code and in policy on the role column.
-- **Row scope** — which rows the role may touch. Global roles (Admin, AP) see across all stores; the Store User is constrained by RLS to rows belonging to their own store.
+- **Row scope** — which rows the role may touch. Global roles (Admin, AP) see across all stores; the Store User is constrained by the authorization module to rows belonging to their own store.
 
-The Store User's store-binding is enforced in Postgres: policies compare the row's `store_id` against the current user's store, read from the per-request session variable. The UI mirrors these rules for usability, but the database is what makes them true.
+The Store User's store-binding is enforced in the authorization module: every query for a Store User is scoped by comparing the row's `store_id` against the current user's store, resolved from the session. The UI mirrors these rules for usability, but the server-side check is what makes them true. (RLS can later enforce the same rule inside the database — see §2.3.)
 
 > **AP and segregation of duties.** AP can correct order quantities — for the real case where a store phones to say an order wasn't fulfilled — but never silently. Every AP correction is written to the audit log with the actor, timestamp, before/after values, and a required reason. AP is therefore unimpeded for legitimate fixes while any attempt to quietly massage numbers leaves a permanent, reportable trail.
 
@@ -135,7 +137,7 @@ Auth is self-rolled and deliberately minimal in feature surface — but not in r
 ### 4.2 Why Server-Side Sessions Over JWTs
 
 - Trivial, instant revocation — delete the row. No token blocklist gymnastics.
-- The session lookup naturally yields the user and role used to set the Postgres session variable for RLS.
+- The session lookup naturally yields the user, role, and store used by the authorization module to scope every query (and, later, to drive RLS policies).
 - Simpler to reason about for a single-backend deployment; no token-refresh dance in the SPA.
 
 ---

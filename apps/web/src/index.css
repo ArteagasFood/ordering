@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens (shadcn/ui convention). A warm, calm palette suited to a bakery tool
+ * (TDD §17): soft background, an amber-leaning primary. Values are HSL channels so
+ * Tailwind can apply opacity. Adjust here to restyle the whole app.
+ */
+:root {
+  --background: 40 33% 98%;
+  --foreground: 25 20% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 25 20% 15%;
+  --primary: 26 84% 47%;
+  --primary-foreground: 40 40% 98%;
+  --secondary: 35 30% 92%;
+  --secondary-foreground: 25 25% 22%;
+  --muted: 35 25% 94%;
+  --muted-foreground: 25 12% 42%;
+  --accent: 35 40% 90%;
+  --accent-foreground: 25 25% 22%;
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 18% 86%;
+  --input: 30 18% 86%;
+  --ring: 26 84% 47%;
+  --radius: 0.6rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  margin: 0;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
